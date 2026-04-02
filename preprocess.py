@@ -1,6 +1,6 @@
 """
-preprocess.py
-=============
+preprocess.py  —  v3
+====================
 Prepares raw datasets for model training.
 
 Datasets handled
@@ -8,21 +8,23 @@ Datasets handled
 1. UCI Heart Disease         → data/raw/heart.csv
 2. PIMA Indians Diabetes     → data/raw/diabetes.csv
 3. UCI Chronic Kidney Disease→ data/raw/kidney.csv
-4. Health Markers Dataset    → data/raw/health_markers_dataset.csv  ← NEW
+4. Health Markers Dataset    → data/raw/health_markers_dataset.csv
 
 Outputs
 -------
-data/processed/*.csv   — feature CSVs (normalized, lowercase column names)
+data/processed/*.csv   — feature CSVs (normalised, lowercase column names)
 models/*_scaler.pkl    — fitted StandardScaler objects for inference
 models/hm_classes.pkl  — LabelEncoder class list for health markers model
 
-Key improvements in v2
-----------------------
-- health_markers_dataset fully integrated (Blood_glucose, HbA1C, LDL, HDL,
-  Triglycerides, Haemoglobin, MCV, Systolic_BP, Diastolic_BP → Condition)
-- All 24 UCI CKD features retained (was 11)
-- Median imputation instead of row-dropping (preserves sample count)
-- Consistent lowercase column names across all processed files
+Changes in v3
+-------------
+- CBC features removed globally: hemo, pcv, wbcc, rbcc (CBC numeric) +
+  rbc, pc, pcc, ba (CBC/urine categorical).
+- Urine features removed: sg, al, su.
+- HM dataset reduced from 9 → 7 features (Haemoglobin and MCV removed).
+- CKD features reduced from 24 → 13 (removed 7 CBC numeric + 4 urine categorical).
+- All missing values imputed with medically normal reference values rather
+  than dataset means wherever a clinical standard exists.
 """
 
 import pandas as pd
@@ -81,8 +83,6 @@ def preprocess_diabetes():
     PIMA Indians Diabetes dataset.
     Features : preg, glucose, bloodpressure, skin, insulin, bmi, dpf, age
     Target   : Outcome → 'outcome'
-
-    Fix: biologically impossible zeros replaced with column median before scaling.
     """
     path = "data/raw/diabetes.csv"
     if not os.path.exists(path):
@@ -91,12 +91,21 @@ def preprocess_diabetes():
 
     df = pd.read_csv(path)
 
-    # Replace impossible zeros with median for these physiological columns
-    zero_replace_cols = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
-    for col in zero_replace_cols:
+    # Medically normal imputation values for impossible zeros
+    NORMAL_MEDIANS = {
+        "Glucose":       95.0,    # normal fasting <100 mg/dL (ADA)
+        "BloodPressure": 78.0,    # normal diastolic <80 mmHg
+        "SkinThickness": 22.0,    # normal skinfold ~20–25 mm
+        "Insulin":       10.0,    # normal fasting insulin 2–25 µU/mL
+        "BMI":           22.5,    # healthy BMI 18.5–24.9 (WHO)
+    }
+    for col, normal_val in NORMAL_MEDIANS.items():
         if col in df.columns:
-            median_val = df[col].replace(0, np.nan).median()
-            df[col] = df[col].replace(0, median_val)
+            df[col] = df[col].replace(0, np.nan)
+            # Prefer dataset median if it exists and is in normal range; else use normal_val
+            dataset_median = df[col].median()
+            fill = dataset_median if pd.notna(dataset_median) else normal_val
+            df[col].fillna(fill, inplace=True)
 
     df = df.dropna()
 
@@ -132,22 +141,23 @@ def preprocess_diabetes():
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_kidney():
     """
-    UCI Chronic Kidney Disease dataset.
+    UCI Chronic Kidney Disease dataset — v3 (CBC and urine features removed).
 
-    Numeric features (14):
-      age, bp, sg, al, su, bgr, bu, sc, sod, pot, hemo, pcv, wbcc, rbcc
+    Numeric features retained (7):
+      age, bp, bgr, bu, sc, sod, pot
 
-    Categorical features (10) — label-encoded to 0/1:
-      rbc   : normal=1 / abnormal=0
-      pc    : normal=1 / abnormal=0
-      pcc   : present=1 / notpresent=0
-      ba    : present=1 / notpresent=0
+    Categorical features retained (6) — label-encoded to 0/1:
       htn   : yes=1 / no=0
       dm    : yes=1 / no=0
       cad   : yes=1 / no=0
       appet : good=1 / poor=0
       pe    : yes=1 / no=0
       ane   : yes=1 / no=0
+
+    Removed (CBC + urine):
+      sg, al, su               — urine specific gravity / albumin / sugar
+      rbc, pc, pcc, ba         — urine microscopy categorical
+      hemo, pcv, wbcc, rbcc    — haematology (CBC)
 
     Target: ckd=1, notckd=0
     """
@@ -161,9 +171,6 @@ def preprocess_kidney():
     df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
     df.columns = df.columns.str.lower().str.strip()
 
-    # Handle column name variants
-    df.rename(columns={"wc": "wbcc", "rc": "rbcc"}, inplace=True)
-
     # Encode target
     df["classification"] = df["classification"].str.strip().str.lower()
     df["classification"] = df["classification"].map({
@@ -172,16 +179,11 @@ def preprocess_kidney():
     df.dropna(subset=["classification"], inplace=True)
     df["classification"] = df["classification"].astype(int)
 
-    NUMERIC_COLS = [
-        "age", "bp", "sg", "al", "su",
-        "bgr", "bu", "sc", "sod", "pot", "hemo",
-        "pcv", "wbcc", "rbcc",
-    ]
+    # ── Numeric features (CBC and urine columns intentionally excluded) ───────
+    NUMERIC_COLS = ["age", "bp", "bgr", "bu", "sc", "sod", "pot"]
+
+    # ── Categorical features (urine microscopy excluded) ─────────────────────
     CAT_MAPS = {
-        "rbc":   {"normal": 1, "abnormal": 0},
-        "pc":    {"normal": 1, "abnormal": 0},
-        "pcc":   {"present": 1, "notpresent": 0},
-        "ba":    {"present": 1, "notpresent": 0},
         "htn":   {"yes": 1, "no": 0},
         "dm":    {"yes": 1, "no": 0},
         "cad":   {"yes": 1, "no": 0},
@@ -202,10 +204,22 @@ def preprocess_kidney():
     for col in numeric_available:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Impute with median / mode
+    # Medically-normal imputation for missing numeric values
+    NORMAL_KIDNEY = {
+        "age":  45.0,
+        "bp":   78.0,    # normal diastolic <80 mmHg
+        "bgr": 115.0,    # normal random glucose <140 mg/dL
+        "bu":   14.0,    # normal BUN 7–20 mg/dL
+        "sc":    0.9,    # normal creatinine 0.6–1.2 mg/dL
+        "sod": 140.0,    # normal sodium 135–145 mEq/L
+        "pot":   4.0,    # normal potassium 3.5–5.0 mEq/L
+    }
     for col in numeric_available:
-        df[col].fillna(df[col].median(), inplace=True)
+        if df[col].isna().any():
+            fill = NORMAL_KIDNEY.get(col, df[col].median())
+            df[col].fillna(fill, inplace=True)
 
+    # Mode imputation for categorical
     for col in categoric_available:
         if df[col].isna().any():
             mode = df[col].mode()
@@ -230,25 +244,17 @@ def preprocess_kidney():
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_health_markers():
     """
-    Health Markers Dataset (25 000 records).
+    Health Markers Dataset (25 000 records) — v3 (CBC features removed).
 
-    Features (9 continuous):
-      Blood_glucose, HbA1C, Systolic_BP, Diastolic_BP, LDL, HDL,
-      Triglycerides, Haemoglobin, MCV
+    Features retained (7 continuous):
+      Blood_glucose, HbA1C, Systolic_BP, Diastolic_BP, LDL, HDL, Triglycerides
+
+    Removed (CBC):
+      Haemoglobin, MCV
 
     Target (multi-class):
       Condition ∈ {Fit, Diabetes, Hypertension, High_Cholesterol, Anemia}
-      Label-encoded → integer (alphabetical: Anemia=0, Diabetes=1, Fit=2,
-                                              High_Cholesterol=3, Hypertension=4)
-
-    Processing steps:
-    1. Copy raw file to data/raw if it exists in the upload location
-    2. Fill 162 missing rows with column median
-    3. Label-encode Condition
-    4. Standardise features
-    5. Save encoder class list for inference-time class → name mapping
     """
-    # Support loading from the upload path used during development
     candidate_paths = [
         "data/raw/health_markers_dataset.csv",
         "/mnt/user-data/uploads/health_markers_dataset.csv",
@@ -263,7 +269,6 @@ def preprocess_health_markers():
         print("[HM]       SKIPPED — health_markers_dataset.csv not found in data/raw/")
         return
 
-    # Copy to data/raw if loaded from uploads
     dest = "data/raw/health_markers_dataset.csv"
     if path != dest:
         os.makedirs("data/raw", exist_ok=True)
@@ -273,36 +278,42 @@ def preprocess_health_markers():
     df = pd.read_csv(dest)
     print(f"[HM]       Loaded {len(df)} records, {df['Condition'].isna().sum()} target NaN rows")
 
-    # Drop rows with missing target
     df = df[df["Condition"].notna()].copy()
 
+    # ── Feature columns (Haemoglobin and MCV removed) ─────────────────────────
     HM_FEATURE_COLS = [
         "Blood_glucose", "HbA1C", "Systolic_BP", "Diastolic_BP",
-        "LDL", "HDL", "Triglycerides", "Haemoglobin", "MCV",
+        "LDL", "HDL", "Triglycerides",
     ]
 
-    # Impute missing feature values with column median
+    # Medically-normal imputation for any missing feature values
+    HM_NORMAL = {
+        "Blood_glucose":  95.0,
+        "HbA1C":           5.3,
+        "Systolic_BP":   118.0,
+        "Diastolic_BP":   78.0,
+        "LDL":            90.0,
+        "HDL":            55.0,
+        "Triglycerides": 115.0,
+    }
     for col in HM_FEATURE_COLS:
         if col in df.columns and df[col].isna().any():
-            median_val = df[col].median()
-            df[col].fillna(median_val, inplace=True)
-            print(f"[HM]         Imputed {col} with median={median_val:.2f}")
+            fill = HM_NORMAL.get(col, df[col].median())
+            df[col].fillna(fill, inplace=True)
+            print(f"[HM]         Imputed {col} with {fill}")
 
     df = df[HM_FEATURE_COLS + ["Condition"]].dropna().copy()
 
-    # Label-encode target (alphabetical → Anemia=0, Diabetes=1, Fit=2,
-    #                                      High_Cholesterol=3, Hypertension=4)
     le = LabelEncoder()
     df["condition_label"] = le.fit_transform(df["Condition"])
 
-    # Save class names so predict.py can map index → condition
     joblib.dump(list(le.classes_), "models/hm_classes.pkl")
     print(f"[HM]       Classes: {list(le.classes_)}")
 
     X = df[HM_FEATURE_COLS].astype(float)
     y = df["condition_label"].astype(int)
 
-    # Rename columns to canonical internal names (lowercase snake_case)
+    # Rename to canonical internal names (must match HM_FEATURES in predict.py)
     col_rename = {
         "Blood_glucose": "glucose",
         "HbA1C":         "hba1c",
@@ -311,13 +322,10 @@ def preprocess_health_markers():
         "LDL":           "ldl",
         "HDL":           "hdl",
         "Triglycerides": "triglycerides",
-        "Haemoglobin":   "hemo",
-        "MCV":           "mcv",
     }
     X = X.rename(columns=col_rename)
     HM_CANONICAL = list(col_rename.values())
 
-    # Save column order for inference
     joblib.dump(HM_CANONICAL, "models/hm_features.pkl")
 
     scaler = StandardScaler()
