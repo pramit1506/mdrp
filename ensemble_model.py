@@ -13,10 +13,11 @@ Why this combination?
 - LogReg meta : Learns optimal confidence weighting from base model output probabilities.
                 Produces well-calibrated risk probabilities (critical for medical use).
 
-Why better than XGBoost alone?
--------------------------------
-Stacking uses StratifiedKFold CV to produce out-of-fold base predictions for the
-meta-learner, preventing data leakage and reducing overfitting.
+Fix v3
+------
+- Removed deprecated `multi_class` kwarg from LogisticRegression (removed in sklearn ≥1.5).
+  The solver 'lbfgs' handles multiclass automatically via the OvR/multinomial logic
+  determined internally; no explicit `multi_class` needed.
 """
 
 from xgboost import XGBClassifier
@@ -31,7 +32,7 @@ def build_ensemble(multiclass: bool = False) -> StackingClassifier:
     Parameters
     ----------
     multiclass : bool
-        If True, configure meta-learner for multi-class output
+        If True, configure base estimators for multi-class output
         (used for the health_markers_dataset which has 5 condition classes).
 
     Returns
@@ -60,12 +61,12 @@ def build_ensemble(multiclass: bool = False) -> StackingClassifier:
         n_jobs=-1,
     )
 
-    solver = "lbfgs" if not multiclass else "lbfgs"
+    # NOTE: `multi_class` argument was deprecated in scikit-learn 1.5 and removed
+    # in 1.6+.  The lbfgs solver handles both binary and multiclass natively.
     meta = LogisticRegression(
         max_iter=1000,
         C=1.0,
-        solver=solver,
-        multi_class="auto",
+        solver="lbfgs",
         random_state=42,
     )
 
