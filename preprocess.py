@@ -40,12 +40,6 @@ os.makedirs("models", exist_ok=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_heart():
-    """
-    UCI Heart Disease dataset (Cleveland).
-    Features : age, sex, cp, trestbps, chol, fbs, restecg,
-               thalach, exang, oldpeak, slope, ca, thal  (13 features)
-    Target   : target/num → binarised 0/1
-    """
     path = "data/raw/heart.csv"
     if not os.path.exists(path):
         print(f"[Heart]    SKIPPED — file not found: {path}")
@@ -79,11 +73,6 @@ def preprocess_heart():
 
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_diabetes():
-    """
-    PIMA Indians Diabetes dataset.
-    Features : preg, glucose, bloodpressure, skin, insulin, bmi, dpf, age
-    Target   : Outcome → 'outcome'
-    """
     path = "data/raw/diabetes.csv"
     if not os.path.exists(path):
         print(f"[Diabetes] SKIPPED — file not found: {path}")
@@ -91,18 +80,16 @@ def preprocess_diabetes():
 
     df = pd.read_csv(path)
 
-    # Medically normal imputation values for impossible zeros
     NORMAL_MEDIANS = {
-        "Glucose":       95.0,    # normal fasting <100 mg/dL (ADA)
-        "BloodPressure": 78.0,    # normal diastolic <80 mmHg
-        "SkinThickness": 22.0,    # normal skinfold ~20–25 mm
-        "Insulin":       10.0,    # normal fasting insulin 2–25 µU/mL
-        "BMI":           22.5,    # healthy BMI 18.5–24.9 (WHO)
+        "Glucose":       95.0,
+        "BloodPressure": 78.0,
+        "SkinThickness": 22.0,
+        "Insulin":       10.0,
+        "BMI":           22.5,
     }
     for col, normal_val in NORMAL_MEDIANS.items():
         if col in df.columns:
             df[col] = df[col].replace(0, np.nan)
-            # Prefer dataset median if it exists and is in normal range; else use normal_val
             dataset_median = df[col].median()
             fill = dataset_median if pd.notna(dataset_median) else normal_val
             df[col].fillna(fill, inplace=True)
@@ -141,25 +128,8 @@ def preprocess_diabetes():
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_kidney():
     """
-    UCI Chronic Kidney Disease dataset — v3 (CBC and urine features removed).
-
-    Numeric features retained (7):
-      age, bp, bgr, bu, sc, sod, pot
-
-    Categorical features retained (6) — label-encoded to 0/1:
-      htn   : yes=1 / no=0
-      dm    : yes=1 / no=0
-      cad   : yes=1 / no=0
-      appet : good=1 / poor=0
-      pe    : yes=1 / no=0
-      ane   : yes=1 / no=0
-
-    Removed (CBC + urine):
-      sg, al, su               — urine specific gravity / albumin / sugar
-      rbc, pc, pcc, ba         — urine microscopy categorical
-      hemo, pcv, wbcc, rbcc    — haematology (CBC)
-
-    Target: ckd=1, notckd=0
+    UCI Chronic Kidney Disease — v3: 13 features (7 numeric + 6 categorical).
+    CBC (hemo, pcv, wbcc, rbcc) and urine (sg, al, su, rbc, pc, pcc, ba) removed.
     """
     path = "data/raw/kidney.csv"
     if not os.path.exists(path):
@@ -168,7 +138,7 @@ def preprocess_kidney():
 
     df = pd.read_csv(path)
     df.replace(["?", "\t?", " "], np.nan, inplace=True)
-    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
     df.columns = df.columns.str.lower().str.strip()
 
     # Encode target
@@ -179,10 +149,10 @@ def preprocess_kidney():
     df.dropna(subset=["classification"], inplace=True)
     df["classification"] = df["classification"].astype(int)
 
-    # ── Numeric features (CBC and urine columns intentionally excluded) ───────
+    # ── Numeric features (7) — CBC and urine intentionally excluded ──────────
     NUMERIC_COLS = ["age", "bp", "bgr", "bu", "sc", "sod", "pot"]
 
-    # ── Categorical features (urine microscopy excluded) ─────────────────────
+    # ── Categorical features (6) — urine microscopy excluded ─────────────────
     CAT_MAPS = {
         "htn":   {"yes": 1, "no": 0},
         "dm":    {"yes": 1, "no": 0},
@@ -195,31 +165,27 @@ def preprocess_kidney():
     numeric_available   = [c for c in NUMERIC_COLS   if c in df.columns]
     categoric_available = [c for c in CAT_MAPS       if c in df.columns]
 
-    # Encode categorical
     for col, mapping in CAT_MAPS.items():
         if col in df.columns:
             df[col] = df[col].str.lower().str.strip().map(mapping)
 
-    # Convert numeric to float
     for col in numeric_available:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Medically-normal imputation for missing numeric values
     NORMAL_KIDNEY = {
         "age":  45.0,
-        "bp":   78.0,    # normal diastolic <80 mmHg
-        "bgr": 115.0,    # normal random glucose <140 mg/dL
-        "bu":   14.0,    # normal BUN 7–20 mg/dL
-        "sc":    0.9,    # normal creatinine 0.6–1.2 mg/dL
-        "sod": 140.0,    # normal sodium 135–145 mEq/L
-        "pot":   4.0,    # normal potassium 3.5–5.0 mEq/L
+        "bp":   78.0,
+        "bgr": 115.0,
+        "bu":   14.0,
+        "sc":    0.9,
+        "sod": 140.0,
+        "pot":   4.0,
     }
     for col in numeric_available:
         if df[col].isna().any():
             fill = NORMAL_KIDNEY.get(col, df[col].median())
             df[col].fillna(fill, inplace=True)
 
-    # Mode imputation for categorical
     for col in categoric_available:
         if df[col].isna().any():
             mode = df[col].mode()
@@ -232,6 +198,9 @@ def preprocess_kidney():
     X_scaled = scaler.fit_transform(df[ALL_KIDNEY_COLS])
     joblib.dump(scaler, "models/kidney_scaler.pkl")
 
+    # ── Save the exact feature order for inference ─────────────────────────────
+    joblib.dump(ALL_KIDNEY_COLS, "models/kidney_features.pkl")
+
     processed = pd.DataFrame(X_scaled, columns=ALL_KIDNEY_COLS)
     processed["classification"] = df["classification"].values
     processed.to_csv("data/processed/kidney_processed.csv", index=False)
@@ -239,22 +208,11 @@ def preprocess_kidney():
     print(f"[Kidney]   Done | shape: {processed.shape}")
     print(f"           Numeric    : {numeric_available}")
     print(f"           Categorical: {categoric_available}")
+    print(f"           Total features: {len(ALL_KIDNEY_COLS)}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 def preprocess_health_markers():
-    """
-    Health Markers Dataset (25 000 records) — v3 (CBC features removed).
-
-    Features retained (7 continuous):
-      Blood_glucose, HbA1C, Systolic_BP, Diastolic_BP, LDL, HDL, Triglycerides
-
-    Removed (CBC):
-      Haemoglobin, MCV
-
-    Target (multi-class):
-      Condition ∈ {Fit, Diabetes, Hypertension, High_Cholesterol, Anemia}
-    """
     candidate_paths = [
         "data/raw/health_markers_dataset.csv",
         "/mnt/user-data/uploads/health_markers_dataset.csv",
@@ -280,13 +238,11 @@ def preprocess_health_markers():
 
     df = df[df["Condition"].notna()].copy()
 
-    # ── Feature columns (Haemoglobin and MCV removed) ─────────────────────────
     HM_FEATURE_COLS = [
         "Blood_glucose", "HbA1C", "Systolic_BP", "Diastolic_BP",
         "LDL", "HDL", "Triglycerides",
     ]
 
-    # Medically-normal imputation for any missing feature values
     HM_NORMAL = {
         "Blood_glucose":  95.0,
         "HbA1C":           5.3,
@@ -300,7 +256,6 @@ def preprocess_health_markers():
         if col in df.columns and df[col].isna().any():
             fill = HM_NORMAL.get(col, df[col].median())
             df[col].fillna(fill, inplace=True)
-            print(f"[HM]         Imputed {col} with {fill}")
 
     df = df[HM_FEATURE_COLS + ["Condition"]].dropna().copy()
 
@@ -313,7 +268,6 @@ def preprocess_health_markers():
     X = df[HM_FEATURE_COLS].astype(float)
     y = df["condition_label"].astype(int)
 
-    # Rename to canonical internal names (must match HM_FEATURES in predict.py)
     col_rename = {
         "Blood_glucose": "glucose",
         "HbA1C":         "hba1c",
