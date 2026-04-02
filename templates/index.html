@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedRisk — Disease Risk Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-card: #0f172a;
+      --bg-field: #1e293b;
+      --bg-elevated: #1e293b;
+      --border: #334155;
+      --border-hi: #475569;
+      --text: #ffffff;
+      --text-dim: #e2e8f0;
+      --text-muted: #94a3b8;
+      --blue: #3b82f6;
+      --blue-glow: rgba(59, 130, 246, 0.25);
+      --cyan: #22d3ee;
+      --cyan-glow: rgba(34, 211, 238, 0.2);
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --violet: #a78bfa;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Sora', sans-serif;
+      --r: 10px;
+      --r-lg: 18px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 400;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .03) 1px, transparent 1px);
+      background-size: 52px 52px;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── HEADER ───────────────────────────────────────── */
+    header {
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 36px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .brand-dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #fb7185 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .notice {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+      background: rgba(239, 68, 68, .15);
+      border: 1px solid rgba(239, 68, 68, .3);
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+
+    /* ── CARD ─────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text);
+      margin-bottom: 22px;
+    }
+
+    .card-title span {
+      font-size: 18px;
+    }
+
+    /* ── SECTION DIVIDERS inside cards ───────────────── */
+    .section-label {
+      font-size: 10px;
+      font-family: var(--mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      margin: 20px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .section-label:first-child {
+      margin-top: 0;
+    }
+
+    /* ── FORM GRID ────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid.g3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .grid.g4 {
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+
+    @media(max-width:640px) {
+
+      .grid,
+      .grid.g3,
+      .grid.g4 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media(max-width:400px) {
+
+      .grid,
+      .grid.g3,
+      .grid.g4 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 12px;
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    input[type=number],
+    input[type=text],
+    select {
+      background: var(--bg-field);
+      border: 1px solid var(--border-hi);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 500;
+      border-radius: var(--r);
+      padding: 12px 14px;
+      width: 100%;
+      outline: none;
+      transition: all .2s;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-glow);
+    }
+
+    input.from-pdf {
+      border-color: var(--cyan) !important;
+      background: rgba(34, 211, 238, .1) !important;
+      box-shadow: 0 0 0 2px var(--cyan-glow) !important;
+      color: var(--cyan);
+    }
+
+    select option {
+      background: var(--bg-card);
+      color: white;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .bmi-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(34, 211, 238, .15);
+      border: 1px solid var(--cyan);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-family: var(--mono);
+      color: var(--cyan);
+      margin-top: 8px;
+      font-weight: 600;
+      transition: opacity .2s;
+    }
+
+    .bmi-pill.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #preg-field {
+      display: none;
+    }
+
+    /* ── PDF ZONE ─────────────────────────────────────── */
+    .pdf-zone {
+      border: 2px dashed var(--border-hi);
+      border-radius: var(--r-lg);
+      padding: 40px 28px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: all .2s;
+      background: rgba(255, 255, 255, .01);
+    }
+
+    .pdf-zone:hover,
+    .pdf-zone.over {
+      border-color: var(--cyan);
+      background: rgba(34, 211, 238, .05);
+    }
+
+    .pdf-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .pdf-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+    }
+
+    .pdf-zone h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .pdf-zone p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .pdf-tag {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 600;
+      background: rgba(59, 130, 246, .15);
+      border: 1px solid rgba(59, 130, 246, .4);
+      color: #93c5fd;
+      border-radius: 20px;
+      padding: 5px 14px;
+      letter-spacing: .03em;
+    }
+
+    /* ── EXTRACTED PANEL ──────────────────────────────── */
+    #extracted-panel {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .ext-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .ext-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ext-title {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+
+    .ext-count {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      background: var(--bg-field);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 10px;
+    }
+
+    .method-badge {
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 600;
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    .method-badge.hidden {
+      display: none;
+    }
+
+    .method-badge.claude {
+      background: rgba(167, 139, 250, .2);
+      border: 1px solid var(--violet);
+      color: var(--violet);
+    }
+
+    .method-badge.regex {
+      background: rgba(245, 158, 11, .15);
+      border: 1px solid var(--amber);
+      color: var(--amber);
+    }
+
+    .ext-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 8px;
+    }
+
+    .ext-group-label {
+      grid-column: 1/-1;
+      font-size: 10px;
+      font-family: var(--mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      padding: 6px 0 2px;
+      border-bottom: 1px solid var(--border);
+      margin-top: 6px;
+    }
+
+    .ext-item {
+      background: var(--bg-field);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ext-item.found {
+      border-color: rgba(34, 211, 238, .5);
+    }
+
+    .el {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+    }
+
+    .ev {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cyan);
+    }
+
+    .ev.missing {
+      color: var(--border-hi);
+    }
+
+    .eu {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+    }
+
+    /* ── ADVANCED TOGGLE ──────────────────────────────── */
+    .adv-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: var(--mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border: none;
+      background: none;
+      padding: 0;
+      margin: 20px 0 0;
+      user-select: none;
+    }
+
+    .adv-toggle .chevron {
+      transition: transform .2s;
+      font-style: normal;
+    }
+
+    .adv-toggle.open .chevron {
+      transform: rotate(90deg);
+    }
+
+    .adv-section {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .adv-section.open {
+      display: block;
+    }
+
+    /* ── PREDICT BUTTON ───────────────────────────────── */
+    .btn-predict {
+      width: 100%;
+      padding: 18px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--sans);
+      letter-spacing: .02em;
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+      color: white;
+      border: none;
+      border-radius: var(--r-lg);
+      cursor: pointer;
+      transition: all .25s;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, .3);
+    }
+
+    .btn-predict:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(99, 102, 241, .45);
+    }
+
+    .btn-predict:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── RESULTS ──────────────────────────────────────── */
+    #results {
+      display: none;
+    }
+
+    .results-title {
+      font-size: 13px;
+      font-family: var(--mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .risk-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media(max-width:600px) {
+      .risk-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .risk-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 22px;
+    }
+
+    .risk-disease {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .risk-num {
+      font-size: 42px;
+      font-weight: 700;
+      font-family: var(--mono);
+      letter-spacing: -.03em;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+
+    .risk-pct {
+      font-size: 20px;
+      font-weight: 400;
+    }
+
+    .c-low {
+      color: var(--green);
+    }
+
+    .c-mid {
+      color: var(--amber);
+    }
+
+    .c-high {
+      color: var(--red);
+    }
+
+    .risk-bar {
+      height: 6px;
+      background: var(--bg-field);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .risk-fill {
+      height: 100%;
+      width: 0;
+      border-radius: 3px;
+      transition: width 1s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .fill-low {
+      background: var(--green);
+    }
+
+    .fill-mid {
+      background: var(--amber);
+    }
+
+    .fill-high {
+      background: var(--red);
+    }
+
+    .risk-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 600;
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    .tag-low {
+      background: rgba(16, 185, 129, .2);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+
+    .tag-mid {
+      background: rgba(245, 158, 11, .2);
+      border: 1px solid var(--amber);
+      color: var(--amber);
+    }
+
+    .tag-high {
+      background: rgba(239, 68, 68, .2);
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+
+    /* Breakdown detail row under each risk card */
+    .risk-detail {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .detail-pill {
+      font-size: 10px;
+      font-family: var(--mono);
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--bg-field);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .heart-card {
+      border-top: 3px solid #fb7185;
+    }
+
+    .diab-card {
+      border-top: 3px solid #fbbf24;
+    }
+
+    .kidney-card {
+      border-top: 3px solid #34d399;
+    }
+
+    /* ── TOAST ────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-elevated);
+      border: 2px solid var(--border-hi);
+      border-radius: var(--r);
+      padding: 14px 20px;
+      font-weight: 600;
+      font-size: 13px;
+      font-family: var(--mono);
+      z-index: 9999;
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.16, 1, .3, 1);
+      max-width: 320px;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.ok {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .toast.err {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-hi);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- ── HEADER ──────────────────────────────────────── -->
+    <header>
+      <div class="brand">
+        <div class="brand-dot">🩺</div>
+        <span class="brand-name">MedRisk</span>
+      </div>
+      <div class="brand-sub">Multi-Disease Risk Prediction · Ensemble ML + Clinical Scoring</div>
+      <div class="notice">
+        ⚠ Results are <strong>risk estimates</strong>, not diagnoses. Always consult a qualified doctor.<br>
+        Upload a PDF <em>or</em> enter lab values manually below — both routes work fully.
+      </div>
+    </header>
+
+
+    <!-- ── CARD 1: BASIC INFORMATION ────────────────────── -->
+    <div class="card">
+      <div class="card-title"><span>🧍</span> Basic Information</div>
+
+      <div class="grid g3">
+        <div class="field">
+          <label>Age (years)</label>
+          <input type="number" id="age" min="1" max="110" placeholder="e.g. 45" />
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <select id="sex" onchange="togglePreg()">
+            <option value="1">Male</option>
+            <option value="0">Female</option>
+          </select>
+        </div>
+        <div class="field" id="preg-field">
+          <label>Pregnancies</label>
+          <input type="number" id="preg" min="0" placeholder="0" />
+          <span class="hint">Enter 0 if none</span>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:16px">
+        <div class="field">
+          <label>Blood Pressure (mmHg)</label>
+          <input type="text" id="bp_text" placeholder="e.g. 120/80" />
+          <span class="hint">Format: Systolic / Diastolic</span>
+        </div>
+        <div class="field"></div>
+      </div>
+
+      <div class="grid" style="margin-top:16px">
+        <div class="field">
+          <label>Height (cm)</label>
+          <input type="number" id="height" min="50" max="250" placeholder="e.g. 168" oninput="calcBMI()" />
+        </div>
+        <div class="field">
+          <label>Weight (kg)</label>
+          <input type="number" id="weight" step="0.1" min="20" max="250" placeholder="e.g. 72" oninput="calcBMI()" />
+        </div>
+      </div>
+      <div class="bmi-pill hidden" id="bmi-pill">⚖ BMI: <span id="bmi-val">—</span></div>
+    </div>
+
+
+    <!-- ── CARD 2: PDF UPLOAD ─────────────────────────── -->
+    <div class="card">
+      <div class="card-title"><span>📄</span> Blood Report PDF <span
+          style="font-size:12px;font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0">(optional
+          — values auto-fill the form below)</span></div>
+
+      <div class="pdf-zone" id="pdfZone">
+        <input type="file" id="pdfInput" accept=".pdf" />
+        <div class="pdf-icon">🔬</div>
+        <h3 id="pdfZoneText">Upload your lab report</h3>
+        <p>Drag &amp; drop or click to browse.<br />
+          Supports Indian &amp; international pathology report formats.<br />
+          <strong>AI-powered extraction</strong> reads test names, tables, and abbreviations.
+        </p>
+        <div class="pdf-tag">✦ 30+ lab parameters · CBC · Lipid Panel · Kidney · Urine · Clinical history</div>
+      </div>
+
+      <!-- Extracted panel — shown after successful upload -->
+      <div id="extracted-panel">
+        <div class="ext-header">
+          <div class="ext-header-left">
+            <span class="ext-title">Extracted from report</span>
+            <span class="ext-count" id="ext-count">0 values found</span>
+            <span class="method-badge hidden" id="method-badge"></span>
+          </div>
+        </div>
+        <div class="ext-grid" id="ext-grid"></div>
+        <p style="font-size:12px;color:var(--text-dim);font-family:var(--mono);margin-top:14px;line-height:1.7;">
+          ✓ Found values are filled into the lab form below with cyan highlight.<br>
+          Missing values get physiologically derived defaults (max HR from age, HTN from BP, eGFR from creatinine, etc.)
+        </p>
+      </div>
+    </div>
+
+
+    <!-- ── CARD 3: LAB VALUES ─────────────────────────── -->
+    <!--
+    All fields here are OPTIONAL. They are:
+      • Auto-filled (cyan) when a PDF is uploaded above
+      • Can also be typed in manually
+      • Left blank = smart default computed from age/BP/Hb (never a worst-case assumption)
+    Fields that affect clinical scores most are shown first.
+  -->
+    <div class="card">
+      <div class="card-title"><span>🧪</span> Lab Values <span
+          style="font-size:12px;font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0">(optional
+          — fill manually or upload PDF)</span></div>
+
+      <!-- GLUCOSE & METABOLIC -->
+      <div class="section-label">Glucose &amp; Metabolic</div>
+      <div class="grid g4">
+        <div class="field">
+          <label>Fasting Glucose</label>
+          <input type="number" id="glucose" min="40" max="600" step="0.1" placeholder="mg/dL" />
+          <span class="hint">FBS / FPG</span>
+        </div>
+        <div class="field">
+          <label>Post-Prandial</label>
+          <input type="number" id="bgr" min="40" max="600" step="0.1" placeholder="mg/dL" />
+          <span class="hint">PPBS / RBS</span>
+        </div>
+        <div class="field">
+          <label>HbA1c</label>
+          <input type="number" id="hba1c" min="3" max="15" step="0.1" placeholder="%" />
+          <span class="hint">Glycated Hb %</span>
+        </div>
+        <div class="field">
+          <label>Insulin</label>
+          <input type="number" id="insulin" min="1" max="800" step="0.1" placeholder="µU/mL" />
+          <span class="hint">Fasting insulin</span>
+        </div>
+      </div>
+
+      <!-- LIPID PANEL -->
+      <div class="section-label">Lipid Panel</div>
+      <div class="grid g4">
+        <div class="field">
+          <label>Total Cholesterol</label>
+          <input type="number" id="chol" min="80" max="500" step="0.1" placeholder="mg/dL" />
+        </div>
+        <div class="field">
+          <label>LDL</label>
+          <input type="number" id="ldl" min="20" max="400" step="0.1" placeholder="mg/dL" />
+          <span class="hint">"Bad" cholesterol</span>
+        </div>
+        <div class="field">
+          <label>HDL</label>
+          <input type="number" id="hdl" min="10" max="150" step="0.1" placeholder="mg/dL" />
+          <span class="hint">"Good" cholesterol</span>
+        </div>
+        <div class="field">
+          <label>Triglycerides</label>
+          <input type="number" id="triglycerides" min="20" max="1500" step="0.1" placeholder="mg/dL" />
+        </div>
+      </div>
+
+      <!-- BLOOD & KIDNEY -->
+      <div class="section-label">Blood &amp; Kidney</div>
+      <div class="grid g4">
+        <div class="field">
+          <label>Hemoglobin</label>
+          <input type="number" id="hemo" min="3" max="22" step="0.1" placeholder="g/dL" />
+          <span class="hint">Hb / HGB</span>
+        </div>
+        <div class="field">
+          <label>Serum Creatinine</label>
+          <input type="number" id="sc" min="0.1" max="20" step="0.01" placeholder="mg/dL" />
+        </div>
+        <div class="field">
+          <label>Blood Urea</label>
+          <input type="number" id="bu" min="5" max="400" step="0.1" placeholder="mg/dL" />
+          <span class="hint">Urea / BUN</span>
+        </div>
+        <div class="field">
+          <label>eGFR</label>
+          <input type="number" id="egfr" min="0" max="200" step="0.1" placeholder="mL/min" />
+          <span class="hint">If reported</span>
+        </div>
+      </div>
+
+      <!-- ADVANCED (collapsed by default) -->
+      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()" type="button">
+        <i class="chevron">▶</i> Advanced (CBC · Electrolytes · Urine)
+      </button>
+      <div class="adv-section" id="advSection">
+
+        <!-- CBC -->
+        <div class="section-label">Complete Blood Count</div>
+        <div class="grid g4">
+          <div class="field">
+            <label>PCV / Hematocrit</label>
+            <input type="number" id="pcv" min="10" max="65" step="0.1" placeholder="%" />
+          </div>
+          <div class="field">
+            <label>WBC Count</label>
+            <input type="number" id="wbcc" min="1500" max="60000" step="1" placeholder="/cumm" />
+            <span class="hint">TLC e.g. 8500</span>
+          </div>
+          <div class="field">
+            <label>RBC Count</label>
+            <input type="number" id="rbcc" min="1.5" max="9" step="0.01" placeholder="mil/cumm" />
+          </div>
+          <div class="field">
+            <label>MCV</label>
+            <input type="number" id="mcv" min="50" max="130" step="0.1" placeholder="fL" />
+            <span class="hint">Mean cell volume</span>
+          </div>
+        </div>
+
+        <!-- ELECTROLYTES -->
+        <div class="section-label">Electrolytes</div>
+        <div class="grid" style="max-width:420px">
+          <div class="field">
+            <label>Sodium</label>
+            <input type="number" id="sod" min="100" max="175" step="0.1" placeholder="mEq/L" />
+          </div>
+          <div class="field">
+            <label>Potassium</label>
+            <input type="number" id="pot" min="1.5" max="9" step="0.1" placeholder="mEq/L" />
+          </div>
+        </div>
+
+        <!-- URINE -->
+        <div class="section-label">Urine Examination</div>
+        <div class="grid g3" style="max-width:500px">
+          <div class="field">
+            <label>Specific Gravity</label>
+            <input type="number" id="sg" min="1.001" max="1.040" step="0.001" placeholder="e.g. 1.020" />
+          </div>
+          <div class="field">
+            <label>Albumin (0–5)</label>
+            <input type="number" id="al" min="0" max="5" step="1" placeholder="0=nil" />
+            <span class="hint">nil=0, trace=1, +1=2…</span>
+          </div>
+          <div class="field">
+            <label>Sugar (0–5)</label>
+            <input type="number" id="su" min="0" max="5" step="1" placeholder="0=nil" />
+            <span class="hint">Urine glucose only</span>
+          </div>
+        </div>
+
+      </div><!-- /adv-section -->
+    </div>
+
+
+    <!-- ── ANALYSE BUTTON ─────────────────────────────── -->
+    <button class="btn-predict" id="btnPredict" onclick="runPredict()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btn-text">🔬 Analyse Risk</span>
+    </button>
+
+
+    <!-- ── RESULTS ────────────────────────────────────── -->
+    <div id="results">
+      <div class="results-title">Risk Assessment — Based on your values</div>
+      <div class="risk-row">
+
+        <div class="risk-card heart-card">
+          <div class="risk-disease">❤️ Heart Disease</div>
+          <div class="risk-num" id="h-num">—<span class="risk-pct"></span></div>
+          <div class="risk-bar">
+            <div class="risk-fill" id="h-fill"></div>
+          </div>
+          <div class="risk-tag" id="h-tag"></div>
+          <div class="risk-detail" id="h-detail"></div>
+        </div>
+
+        <div class="risk-card diab-card">
+          <div class="risk-disease">🩸 Diabetes</div>
+          <div class="risk-num" id="d-num">—<span class="risk-pct"></span></div>
+          <div class="risk-bar">
+            <div class="risk-fill" id="d-fill"></div>
+          </div>
+          <div class="risk-tag" id="d-tag"></div>
+          <div class="risk-detail" id="d-detail"></div>
+        </div>
+
+        <div class="risk-card kidney-card">
+          <div class="risk-disease">🫘 Kidney Disease</div>
+          <div class="risk-num" id="k-num">—<span class="risk-pct"></span></div>
+          <div class="risk-bar">
+            <div class="risk-fill" id="k-fill"></div>
+          </div>
+          <div class="risk-tag" id="k-tag"></div>
+          <div class="risk-detail" id="k-detail"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /page -->
+  <div class="toast" id="toast"></div>
+
+
+  <script>
+    // ── State ───────────────────────────────────────────────────────────────────
+    // pdfValues holds ONLY categorical/flag fields that have no manual input.
+    // All numeric lab fields are read directly from their <input> elements.
+    let pdfValues = {};
+
+    // Numeric lab fields that have dedicated <input id="..."> elements.
+    const NUMERIC_INPUT_IDS = [
+      "glucose", "bgr", "hba1c", "insulin",
+      "chol", "ldl", "hdl", "triglycerides",
+      "hemo", "sc", "bu", "egfr",
+      "pcv", "wbcc", "rbcc", "mcv",
+      "sod", "pot",
+      "sg", "al", "su",
+    ];
+
+    // Categorical fields populated only from PDF (no manual UI).
+    const CAT_FIELDS = ["rbc", "pc", "pcc", "ba", "htn", "dm", "cad", "appet", "pe", "ane"];
+
+    // ── Helpers ─────────────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+
+    function toast(msg, type = "ok") {
+      const t = $("toast");
+      t.textContent = msg;
+      t.className = "toast " + type + " show";
+      setTimeout(() => t.classList.remove("show"), 3500);
+    }
+
+    function numEl(id, fallback = null) {
+      const el = $(id);
+      if (!el) return fallback;
+      const v = parseFloat(el.value);
+      return isNaN(v) ? fallback : v;
+    }
+
+    function togglePreg() {
+      const show = $("sex").value === "0";
+      $("preg-field").style.display = show ? "flex" : "none";
+      $("preg-field").style.flexDirection = "column";
+      $("preg-field").style.gap = "6px";
+    }
+
+    function calcBMI() {
+      const h = numEl("height"), w = numEl("weight");
+      const pill = $("bmi-pill");
+      if (h > 0 && w > 0) {
+        $("bmi-val").textContent = (w / Math.pow(h / 100, 2)).toFixed(1);
+        pill.classList.remove("hidden");
+      } else {
+        pill.classList.add("hidden");
+      }
+    }
+
+    function parseBP() {
+      const txt = ($("bp_text")?.value || "").trim();
+      const [a, b] = txt.split("/").map(p => parseFloat(p.trim()));
+      return {
+        systolic: isNaN(a) ? null : a,
+        diastolic: isNaN(b) ? null : b,
+      };
+    }
+
+    function toggleAdv() {
+      const btn = $("advToggle");
+      const sec = $("advSection");
+      btn.classList.toggle("open");
+      sec.classList.toggle("open");
+    }
+
+    // ── Field metadata for the extracted-panel display ───────────────────────
+    const FIELD_GROUPS = [
+      {
+        label: "Glucose & Metabolic",
+        fields: [
+          { key: "glucose", label: "Glucose (Fasting)", unit: "mg/dL" },
+          { key: "bgr", label: "Glucose (PP/Random)", unit: "mg/dL" },
+          { key: "hba1c", label: "HbA1c", unit: "%" },
+          { key: "insulin", label: "Insulin", unit: "µU/mL" },
+        ]
+      },
+      {
+        label: "Lipid Panel",
+        fields: [
+          { key: "chol", label: "Total Cholesterol", unit: "mg/dL" },
+          { key: "ldl", label: "LDL", unit: "mg/dL" },
+          { key: "hdl", label: "HDL", unit: "mg/dL" },
+          { key: "triglycerides", label: "Triglycerides", unit: "mg/dL" },
+        ]
+      },
+      {
+        label: "Complete Blood Count",
+        fields: [
+          { key: "hemo", label: "Hemoglobin", unit: "g/dL" },
+          { key: "pcv", label: "PCV / HCT", unit: "%" },
+          { key: "wbcc", label: "WBC Count", unit: "/cumm" },
+          { key: "rbcc", label: "RBC Count", unit: "mil/cumm" },
+          { key: "mcv", label: "MCV", unit: "fL" },
+        ]
+      },
+      {
+        label: "Kidney Function",
+        fields: [
+          { key: "sc", label: "Serum Creatinine", unit: "mg/dL" },
+          { key: "bu", label: "Blood Urea", unit: "mg/dL" },
+          { key: "sod", label: "Sodium", unit: "mEq/L" },
+          { key: "pot", label: "Potassium", unit: "mEq/L" },
+          { key: "egfr", label: "eGFR", unit: "mL/min" },
+        ]
+      },
+      {
+        label: "Urine Examination",
+        fields: [
+          { key: "sg", label: "Sp. Gravity", unit: "" },
+          { key: "al", label: "Albumin", unit: "(0–5)" },
+          { key: "su", label: "Sugar", unit: "(0–5)" },
+          { key: "rbc", label: "RBC (urine)", unit: "1=nrml" },
+          { key: "pc", label: "Pus Cells", unit: "1=nrml" },
+          { key: "pcc", label: "Pus Cell Clumps", unit: "1=pres" },
+          { key: "ba", label: "Bacteria", unit: "1=pres" },
+        ]
+      },
+      {
+        label: "Clinical History",
+        fields: [
+          { key: "htn", label: "Hypertension", unit: "1=yes" },
+          { key: "dm", label: "Diabetes (hx)", unit: "1=yes" },
+          { key: "cad", label: "CAD / IHD", unit: "1=yes" },
+          { key: "appet", label: "Appetite", unit: "1=good" },
+          { key: "pe", label: "Pedal Edema", unit: "1=yes" },
+          { key: "ane", label: "Anemia", unit: "1=yes" },
+        ]
+      },
+    ];
+
+    const FIELD_META = {};
+    FIELD_GROUPS.forEach(g => g.fields.forEach(f => { FIELD_META[f.key] = f; }));
+
+
+    // ── PDF Upload ─────────────────────────────────────────────────────────────
+    async function handlePDF(file) {
+      $("pdfZoneText").textContent = "⏳ Parsing…";
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        const res = await fetch("/parse-pdf", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        const vals = data.extracted || {};
+
+        // Reset all categorical pdfValues
+        pdfValues = {};
+
+        // ── Fill numeric inputs from extracted values ──────────────────────────
+        NUMERIC_INPUT_IDS.forEach(field => {
+          const el = $(field);
+          if (!el) return;
+          if (vals[field] !== undefined) {
+            el.value = vals[field];
+            el.classList.add("from-pdf");
+          }
+          // Don't clear an existing manual entry if PDF didn't find this field
+        });
+
+        // ── Handle BP ─────────────────────────────────────────────────────────
+        if (vals.systolic_bp || vals.diastolic_bp) {
+          const sys = vals.systolic_bp || 120;
+          const dia = vals.diastolic_bp || 80;
+          $("bp_text").value = `${sys}/${dia}`;
+          $("bp_text").classList.add("from-pdf");
+        }
+
+        // ── Handle Age ────────────────────────────────────────────────────────
+        if (vals.age) {
+          $("age").value = vals.age;
+          $("age").classList.add("from-pdf");
+        }
+
+        // ── Store categorical flags in pdfValues (no UI inputs for these) ─────
+        CAT_FIELDS.forEach(f => {
+          if (vals[f] !== undefined) pdfValues[f] = vals[f];
+        });
+
+        // ── Open advanced section if any advanced field was found ──────────────
+        const advFound = ["pcv", "wbcc", "rbcc", "mcv", "sod", "pot", "sg", "al", "su"]
+          .some(f => vals[f] !== undefined);
+        if (advFound && !$("advSection").classList.contains("open")) {
+          toggleAdv();
+        }
+
+        // ── Extraction badge ───────────────────────────────────────────────────
+        const badge = $("method-badge");
+        badge.classList.remove("hidden", "claude", "regex");
+        if (data.method === "claude_api") {
+          badge.textContent = "✦ AI Extracted";
+          badge.classList.add("claude");
+        } else {
+          badge.textContent = "⊛ Regex Parsed";
+          badge.classList.add("regex");
+        }
+
+        renderExtracted(vals);
+
+        $("pdfZoneText").textContent = `✓ Report loaded — ${data.count} values found`;
+        toast(`✓ ${data.count} values extracted from PDF`, "ok");
+
+      } catch (err) {
+        $("pdfZoneText").textContent = "Upload your lab report";
+        toast("PDF parse failed: " + err.message, "err");
+      }
+    }
+
+    function renderExtracted(vals) {
+      const panel = $("extracted-panel");
+      const grid = $("ext-grid");
+      const count = $("ext-count");
+
+      panel.style.display = "block";
+      grid.innerHTML = "";
+
+      // Count every extracted key (including bp, age)
+      const total = Object.keys(vals).length;
+      count.textContent = `${total} value${total !== 1 ? "s" : ""} found`;
+
+      FIELD_GROUPS.forEach(group => {
+        const hdr = document.createElement("div");
+        hdr.className = "ext-group-label";
+        hdr.textContent = group.label;
+        grid.appendChild(hdr);
+
+        group.fields.forEach(({ key, label, unit }) => {
+          const item = document.createElement("div");
+          const hasVal = vals[key] !== undefined;
+          item.className = "ext-item" + (hasVal ? " found" : "");
+
+          const valHtml = hasVal
+            ? `<span class="ev">${vals[key]}</span><span class="eu">${unit}</span>`
+            : `<span class="ev missing">—</span>`;
+
+          item.innerHTML = `<span class="el">${label}</span>${valHtml}`;
+          grid.appendChild(item);
+        });
+      });
+    }
+
+    $("pdfInput").addEventListener("change", function () {
+      if (this.files[0]) handlePDF(this.files[0]);
+    });
+
+    const pdfZone = $("pdfZone");
+    pdfZone.addEventListener("dragover", e => { e.preventDefault(); pdfZone.classList.add("over"); });
+    pdfZone.addEventListener("dragleave", () => pdfZone.classList.remove("over"));
+    pdfZone.addEventListener("drop", e => {
+      e.preventDefault(); pdfZone.classList.remove("over");
+      const f = e.dataTransfer.files[0];
+      if (f?.type === "application/pdf") handlePDF(f);
+      else toast("Please drop a PDF file", "err");
+    });
+
+
+    // ── Risk rendering ─────────────────────────────────────────────────────────
+    function riskClass(pct) { return pct < 33 ? "low" : pct < 66 ? "mid" : "high"; }
+    function riskLabel(pct) { return pct < 33 ? "Low Risk" : pct < 66 ? "Moderate Risk" : "High Risk"; }
+
+    function renderRisk(numId, fillId, tagId, pct) {
+      const c = riskClass(pct);
+      const n = $(numId);
+      n.innerHTML = `${pct.toFixed(1)}<span class="risk-pct">%</span>`;
+      n.className = `risk-num c-${c}`;
+      const fill = $(fillId);
+      fill.className = `risk-fill fill-${c}`;
+      setTimeout(() => fill.style.width = Math.min(pct, 100) + "%", 80);
+      const tag = $(tagId);
+      tag.textContent = riskLabel(pct);
+      tag.className = `risk-tag tag-${c}`;
+    }
+
+    function renderDetail(detailId, detail) {
+      const el = $(detailId);
+      if (!el || !detail) return;
+      el.innerHTML = `
+      <span class="detail-pill">ML ${detail.ml}%</span>
+      <span class="detail-pill">Clinical ${detail.clinical}/100</span>
+      <span class="detail-pill">HM ${detail.hm}%</span>`;
+    }
+
+
+    // ── Main prediction ────────────────────────────────────────────────────────
+    async function runPredict() {
+      const btn = $("btnPredict");
+
+      // Validate required fields
+      const age = numEl("age");
+      if (!age) { toast("Please enter your age", "err"); return; }
+
+      const bp = parseBP();
+      if (!bp.systolic || !bp.diastolic) {
+        toast("Please enter valid blood pressure (e.g. 120/80)", "err");
+        return;
+      }
+
+      const h = numEl("height"), w = numEl("weight");
+      if (!h || !w) { toast("Please enter height and weight for BMI", "err"); return; }
+
+      btn.disabled = true;
+      $("spinner").style.display = "block";
+      $("btn-text").textContent = "Analysing…";
+
+      // ── Build payload ────────────────────────────────────────────────────────
+      const payload = {
+        age,
+        sex: parseInt($("sex").value),
+        systolic_bp: bp.systolic,
+        diastolic_bp: bp.diastolic,
+        height_cm: h,
+        weight_kg: w,
+        preg: numEl("preg") || 0,
+      };
+
+      // All numeric lab inputs — only include if user entered a value
+      NUMERIC_INPUT_IDS.forEach(field => {
+        const v = numEl(field);
+        if (v !== null) payload[field] = v;
+      });
+
+      // Categorical flags from PDF (no manual inputs)
+      CAT_FIELDS.forEach(f => {
+        if (pdfValues[f] !== undefined) payload[f] = pdfValues[f];
+      });
+
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Prediction failed");
+
+        $("results").style.display = "block";
+        renderRisk("h-num", "h-fill", "h-tag", data.heart);
+        renderRisk("d-num", "d-fill", "d-tag", data.diabetes);
+        renderRisk("k-num", "k-fill", "k-tag", data.kidney);
+
+        if (data.scores_detail) {
+          renderDetail("h-detail", data.scores_detail.heart);
+          renderDetail("d-detail", data.scores_detail.diabetes);
+          renderDetail("k-detail", data.scores_detail.kidney);
+        }
+
+        $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+        toast("✓ Analysis complete", "ok");
+
+      } catch (err) {
+        toast(err.message.slice(0, 100), "err");
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        $("spinner").style.display = "none";
+        $("btn-text").textContent = "🔬 Analyse Risk";
+      }
+    }
+
+    // Enter key on any input triggers analysis
+    window.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("input").forEach(el =>
+        el.addEventListener("keydown", e => { if (e.key === "Enter") runPredict(); })
+      );
+    });
+  </script>
+</body>
+
+</html>
