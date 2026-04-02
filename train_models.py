@@ -1,15 +1,20 @@
 """
-train_models.py
-===============
+train_models.py  —  v3
+=======================
 Trains stacking ensemble models for all 4 prediction targets:
-  1. Heart Disease     (UCI Heart Disease)
-  2. Diabetes          (PIMA Indians)
-  3. Kidney Disease    (UCI Chronic Kidney Disease)
-  4. Health Markers    (health_markers_dataset — multi-class) ← NEW
+  1. Heart Disease     (UCI Heart Disease)          → models/heart_model.pkl
+  2. Diabetes          (PIMA Indians)               → models/diabetes_model.pkl
+  3. Kidney Disease    (UCI CKD — 13 features)      → models/kidney_model.pkl
+  4. Health Markers    (health_markers_dataset)     → models/hm_model.pkl
 
-Models saved to models/*.pkl
+Changes in v3
+-------------
+- Kidney model now trains on 13 features (CBC + urine removed by preprocess.py).
+- HM model now trains on 7 features (hemo + mcv removed).
+- Model filename alignment: hm_model.pkl (consistent with evaluate_models.py).
 """
 
+import os
 import joblib
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report
@@ -30,18 +35,17 @@ def train(path: str, target: str, out: str, multiclass: bool = False):
     multiclass : True for multi-class classification (health markers)
     """
     df = pd.read_csv(path)
-    X = df.drop(target, axis=1)
-    y = df[target]
+    X  = df.drop(target, axis=1)
+    y  = df[target]
 
     print(f"\nTraining on : {path}")
     print(f"  Samples   : {len(df)}")
     print(f"  Features  : {X.shape[1]}")
     print(f"  Classes   : {sorted(y.unique())}")
 
-    # Hold out a 20 % test set for quick sanity evaluation
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42,
-        stratify=y if y.nunique() <= 20 else None
+        stratify=y if y.nunique() <= 20 else None,
     )
 
     model = build_ensemble(multiclass=multiclass)
@@ -57,10 +61,9 @@ def train(path: str, target: str, out: str, multiclass: bool = False):
 
 
 if __name__ == "__main__":
-    import os
     os.makedirs("models", exist_ok=True)
 
-    # ── 1. Heart Disease (binary) ─────────────────────────────────────────────
+    # ── 1. Heart Disease (binary) ──────────────────────────────────────────────
     if os.path.exists("data/processed/heart_processed.csv"):
         train(
             path="data/processed/heart_processed.csv",
@@ -71,7 +74,7 @@ if __name__ == "__main__":
     else:
         print("[Heart]    SKIPPED — heart_processed.csv not found")
 
-    # ── 2. Diabetes (binary) ─────────────────────────────────────────────────
+    # ── 2. Diabetes (binary) ──────────────────────────────────────────────────
     if os.path.exists("data/processed/diabetes_processed.csv"):
         train(
             path="data/processed/diabetes_processed.csv",
@@ -82,7 +85,7 @@ if __name__ == "__main__":
     else:
         print("[Diabetes] SKIPPED — diabetes_processed.csv not found")
 
-    # ── 3. Kidney Disease (binary) ────────────────────────────────────────────
+    # ── 3. Kidney Disease (binary, 13 features in v3) ─────────────────────────
     if os.path.exists("data/processed/kidney_processed.csv"):
         train(
             path="data/processed/kidney_processed.csv",
@@ -93,12 +96,12 @@ if __name__ == "__main__":
     else:
         print("[Kidney]   SKIPPED — kidney_processed.csv not found")
 
-    # ── 4. Health Markers Condition (multi-class) ─────────────────────────────
+    # ── 4. Health Markers Condition (multi-class, 7 features in v3) ───────────
     if os.path.exists("data/processed/hm_processed.csv"):
         train(
             path="data/processed/hm_processed.csv",
             target="condition_label",
-            out="models/hm_model.pkl",
+            out="models/hm_model.pkl",        # consistent with evaluate_models.py
             multiclass=True,
         )
     else:
