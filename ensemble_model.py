@@ -1,82 +1,22 @@
-"""
-ensemble_model.py
-=================
-Stacking Ensemble: XGBoost (primary) + RandomForest (secondary)
-Meta-learner: Logistic Regression
-
-Why this combination?
----------------------
-- XGBoost     : Boosting-based; captures non-linear feature interactions.
-                High accuracy on tabular medical data. Prone to overfit on small sets.
-- RandomForest: Bagging-based; low variance; sees data differently from XGBoost.
-                The two models disagree on different hard samples — stacking exploits this.
-- LogReg meta : Learns optimal confidence weighting from base model output probabilities.
-                Produces well-calibrated risk probabilities (critical for medical use).
-
-Fix v3
-------
-- Removed deprecated `multi_class` kwarg from LogisticRegression (removed in sklearn ≥1.5).
-  The solver 'lbfgs' handles multiclass automatically via the OvR/multinomial logic
-  determined internally; no explicit `multi_class` needed.
-"""
-
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
 
-
-def build_ensemble(multiclass: bool = False) -> StackingClassifier:
-    """
-    Build a stacking ensemble classifier.
-
-    Parameters
-    ----------
-    multiclass : bool
-        If True, configure base estimators for multi-class output
-        (used for the health_markers_dataset which has 5 condition classes).
-
-    Returns
-    -------
-    StackingClassifier (unfitted)
-    """
+def build_ensemble(multiclass=False):
     xgb = XGBClassifier(
-        n_estimators=200,
-        max_depth=4,
-        learning_rate=0.05,
-        subsample=0.8,
-        colsample_bytree=0.8,
+        n_estimators=200, max_depth=4, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8,
         eval_metric="mlogloss" if multiclass else "logloss",
-        use_label_encoder=False,
-        random_state=42,
-        verbosity=0,
+        use_label_encoder=False, random_state=42, verbosity=0,
     )
-
     rf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=8,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        class_weight="balanced",
-        random_state=42,
-        n_jobs=-1,
+        n_estimators=200, max_depth=8, min_samples_split=5,
+        min_samples_leaf=2, class_weight="balanced",
+        random_state=42, n_jobs=-1,
     )
-
-    # NOTE: `multi_class` argument was deprecated in scikit-learn 1.5 and removed
-    # in 1.6+.  The lbfgs solver handles both binary and multiclass natively.
-    meta = LogisticRegression(
-        max_iter=1000,
-        C=1.0,
-        solver="lbfgs",
-        random_state=42,
-    )
-
-    ensemble = StackingClassifier(
+    meta = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs", random_state=42)
+    return StackingClassifier(
         estimators=[("xgb", xgb), ("rf", rf)],
-        final_estimator=meta,
-        cv=5,
-        stack_method="predict_proba",
-        passthrough=False,
-        n_jobs=-1,
+        final_estimator=meta, cv=5,
+        stack_method="predict_proba", passthrough=False, n_jobs=-1,
     )
-
-    return ensemble
